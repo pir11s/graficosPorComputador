@@ -3,13 +3,15 @@ import pygame, sys
 import math
 from pygame.locals import *
 BLACK  = (0, 0,0)
-WHITE  = (255, 255, 255)
-RED    = (255, 0, 0)
-YELLOW = (255, 255, 0)
+RED = (255,0,0)
 BLUE   = (0,0,255)
 GREEN = (0,255,0)
 
 
+class Rect:
+    def __init__(self,L,color):
+        self.L = L
+        self.color = color
 
 class Cors:
     def __init__(self,x,y):
@@ -17,6 +19,9 @@ class Cors:
         self.y = y
 
 class Button:
+
+    color = BLACK
+
     def __init__(self,surface,pos,width,height,text):
         self.surface = surface
         self.pos = pos
@@ -31,8 +36,14 @@ class Button:
                 return True
         return False
 
-    def draw(self,color):
-        pygame.draw.rect(self.surface,color,pygame.Rect((self.pos.x,self.pos.y),(self.width,self.height)),1)
+    def activate(self):
+        self.color = GREEN
+
+    def desactivate(self):
+        self.color = BLACK
+
+    def draw(self):
+        pygame.draw.rect(self.surface,self.color,pygame.Rect((self.pos.x,self.pos.y),(self.width,self.height)),1)
         textsurface = self.font.render(self.text, False, (0, 0, 0))
         surface.blit(textsurface,(self.pos.x  + 5,self.pos.y))
 
@@ -43,7 +54,26 @@ class Square:
         self.cell_size = cell_size
 
 
+def getColor(color):
+    if color == "RED":
+        return RED
+    if color == "BLUE":
+        return BLUE
+    if color == "GREEN":
+        return GREEN
+    return BLACK
+
+
+def activateButton(Buttons,name):
+    for button in Buttons:
+        if button.text == name:
+            button.activate()
+        else:
+            button.desactivate()
+    return ButtonsAlgorithms
+
 def slope_intercept(x1,y1,x2,y2):
+    swap_x_y = False
     L = []
     if x2<x1:
         x1,y1,x2,y2 = x2,y2,x1,y1
@@ -51,23 +81,30 @@ def slope_intercept(x1,y1,x2,y2):
     y = y1
     dx = x2-x1
     dy = y2-y1
-    if dx != 0:
-        if (dy/dx)>1:
-            x,y = y,x
-            m = 1 / (dy/dx)
-        else:
-            m = dy/dx
-    b = y1 - m *x1
+    if x1 == x2:
+        m = 0
+    else:
+        m = dy / dx
+    if m > 1:
+        swap_x_y = True
+        x,y,x1,x2,y1,y2 = y,x,y1,y2,x1,x2
+        m = 1 / m
+    b = y - m * x1
     while(x<=x2):
-        if y1 == y2:
-            L.append(Cors(x,y1))
         if x1 == x2:
             L.append(Cors(x1,y))
+        elif y1 == y2:
+            L.append(Cors(x,y1))
         else:
             L.append(Cors(x,y))
-            y = round(m*x+b)
+        
         x = x+1
+        y = round(m*x+b)
+    if (swap_x_y):
+        for cors in L:
+            cors.x,cors.y = cors.y,cors.x 
     return L
+
 
 def digital_differential_analyzer(x1,y1,x2,y2):
     dx = x2-x1
@@ -87,6 +124,7 @@ def digital_differential_analyzer(x1,y1,x2,y2):
     return L
 
 def bresenham(x1,y1,x2,y2):
+    swap_x_y = False
     if x2<x1:
         x1,y1,x2,y2 = x2,y2,x1,y1
     x = x1
@@ -95,6 +133,7 @@ def bresenham(x1,y1,x2,y2):
     dy = abs(y2-y1)
     if dx != 0:
         if (dy/dx)>1:
+            swap_x_y = True
             x,y = y,x
             m = 1 / (dy/dx)
         else:
@@ -114,7 +153,13 @@ def bresenham(x1,y1,x2,y2):
             ne = ne - 2 * dx
         x = x + 1
         e = ne + 2 * dy
-        i = i + 1 
+        i = i + 1
+
+    if (swap_x_y):
+        for cors in L:
+            cors.x,cors.y = cors.y,cors.x  
+    return L 
+
 
 def draw_pixels(surface,L,color):
     for cors in L:
@@ -145,46 +190,78 @@ def draw_at_pos(surface,squares,x,y,color):
                 draw_square(surface,square,color)
     return True
 
+
+
 def draw_at_positions(surface,squares,L,color):
     for cors in L:
         draw_at_pos(surface,squares,cors.x,cors.y,color)
     return True
+
+
+
+
 pygame.init()
 # Create the window, saving it to a variable.
 surface = pygame.display.set_mode((1000, 600), pygame.RESIZABLE)
 pygame.display.set_caption("Practica 1")
-selectedAlgorithm = "Slope intercept"
+selectedAlgorithm = "Slope Intercept"
+selectedColor = "RED"
+color = RED
+# Draw a red rectangle that resizes with the window.
+cell_size = 20
+height = surface.get_height()
+width = surface.get_width()
+Rects = []
+ButtonsAlgorithms = [
+    Button(surface,Cors(width / 2 + 25,height * 1 / 5),180,30,"Slope Intercept"),
+    Button(surface,Cors(width / 2 + 25,height * 2 / 5),180,30,"Digital Analyzer"),
+    Button(surface,Cors(width / 2 + 25,height * 3 / 5),180,30,"Bresenham")
+]
+
+ButtonsColors = [
+    Button(surface,Cors(width / 2 + 25,height * 4 / 5),60,30,"RED"),
+    Button(surface,Cors(width / 2 + 95,height * 4 / 5),60,30,"BLUE"),
+    Button(surface,Cors(width / 2 + 165,height * 4 / 5),80,30,"GREEN")
+]
+    
+buttonClear = Button(surface,Cors(width / 2 + 300,height * 1 / 5),80,30,"Clear")
+activateButton(ButtonsColors,selectedColor)
+activateButton(ButtonsAlgorithms,selectedAlgorithm)
+selectedPoints = []
 while True:
     surface.fill((255,255,255))
+    color = getColor(selectedColor)
     height = surface.get_height()
     width = surface.get_width()
-    cell_size = 10
+    
+    ButtonsAlgorithms[0].pos = Cors(width / 2 + 25,height * 1 / 5)
+    ButtonsAlgorithms[1].pos = Cors(width / 2 + 25,height * 2 / 5)
+    ButtonsAlgorithms[2].pos = Cors(width / 2 + 25,height * 3 / 5)
+
+    ButtonsColors[0].pos = Cors(width / 2 + 25,height * 4 / 5)
+    ButtonsColors[1].pos = Cors(width / 2 + 95,height * 4 / 5)
+    ButtonsColors[2].pos = Cors(width / 2 + 165,height * 4 / 5)
+
+    buttonClear.pos = Cors(width / 2 + 300,height * 1 / 5)
+    
     point1 = width/2, height
     point2 = width/2, 0
     lineWidth = surface.get_width()/100
 
     L = []
-    # Draw a red rectangle that resizes with the window.
+
     squares = draw_squares(surface,width/2,height,cell_size)
     
-    
-    NumberOfCellsPerLine = 20
+    for rect in Rects:
+        draw_at_positions(surface,squares,rect.L,rect.color)
 
-    selectedPoints = []
+    buttonClear.draw()
+   
+    for button in ButtonsAlgorithms:
+       button.draw()
     
-    Buttons = [
-        Button(surface,Cors(width / 2 + 25,height * 1 / 5),180,30,"Slope intercept"),
-        Button(surface,Cors(width / 2 + 25,height * 2 / 5),180,30,"Digital Analyzer"),
-        Button(surface,Cors(width / 2 + 25,height * 3 / 5),180,30,"Bresenham")
-    ]
-    for ev in pygame.event.get():
-        if ev.type == pygame.MOUSEBUTTONUP:
-            x,y = pygame.mouse.get_pos()
-            cors = Cors(x,y)
-    
-
-    if (cors.x < width / 2):
-        selectedPoints.append(cors)
+    for button in ButtonsColors:
+        button.draw()
 
     if (len(selectedPoints) == 2):
         if selectedAlgorithm == "Slope Intercept":
@@ -193,19 +270,28 @@ while True:
             L = digital_differential_analyzer(selectedPoints[0].x,selectedPoints[0].y,selectedPoints[1].x,selectedPoints[1].y)
         if selectedAlgorithm == "Bresenham":
             L = bresenham(selectedPoints[0].x,selectedPoints[0].y,selectedPoints[1].x,selectedPoints[1].y)
-        draw_at_positions(surface,squares,L,BLACK)
+        Rects.append(Rect(L,selectedColor))
         selectedPoints = []
         L = []
-    for button in Buttons:
-        if button.isClicked(cors):
-            selectedAlgorithm = button.text
-        if selectedAlgorithm == button.text:
-            button.draw(GREEN)
-        else:
-            button.draw(BLACK)
 
     pygame.display.update()
     for event in pygame.event.get():
+        if event.type == pygame.MOUSEBUTTONUP:
+            x,y = pygame.mouse.get_pos()
+            cors = Cors(x,y)
+            if (cors.x < width / 2):
+                selectedPoints.append(cors)
+            else:
+                if buttonClear.isClicked(cors):
+                    Rects = []
+                for button in ButtonsAlgorithms:
+                    if button.isClicked(cors):
+                        selectedAlgorithm = button.text
+                        activateButton(ButtonsAlgorithms,selectedAlgorithm)
+                for button in ButtonsColors:
+                    if button.isClicked(cors):
+                        selectedColor = button.text
+                        activateButton(ButtonsColors,selectedColor)
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
